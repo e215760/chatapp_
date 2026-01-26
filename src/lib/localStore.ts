@@ -444,6 +444,38 @@ export const localApi = {
     }
     return false;
   },
+  async listUserReactions(
+    questionIds: string[],
+    answerIds: string[],
+    userId: string
+  ): Promise<{
+    questions: Record<string, { like: boolean; thanks: boolean }>;
+    answers: Record<string, { like: boolean; thanks: boolean }>;
+  }> {
+    const store = loadStore();
+    const questions: Record<string, { like: boolean; thanks: boolean }> = {};
+    const answers: Record<string, { like: boolean; thanks: boolean }> = {};
+
+    for (const qId of questionIds) {
+      questions[qId] = { like: false, thanks: false };
+      for (const reaction of store.questionReactions) {
+        if (reaction.questionId === qId && reaction.userId === userId) {
+          questions[qId][reaction.type] = true;
+        }
+      }
+    }
+
+    for (const aId of answerIds) {
+      answers[aId] = { like: false, thanks: false };
+      for (const reaction of store.answerReactions) {
+        if (reaction.answerId === aId && reaction.userId === userId) {
+          answers[aId][reaction.type] = true;
+        }
+      }
+    }
+
+    return { questions, answers };
+  },
   async getProfile(): Promise<Profile> {
     const store = loadStore();
     if (!store.currentUserId) {

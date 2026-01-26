@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+defineProps<{
+  error?: string | null;
+}>();
+
 const emit = defineEmits<{
   (e: "join", payload: { code: string }): void;
+  (e: "clear-error"): void;
 }>();
 
 const code = ref("");
+
+const handleInput = () => {
+  emit("clear-error");
+};
 const parseCode = (input: string) => {
   try {
     const url = new URL(input);
@@ -35,9 +44,16 @@ const submit = () => {
     <form class="form" @submit.prevent="submit">
       <label>
         <span>ルームコード</span>
-        <input v-model="code" type="text" placeholder="例: X7K9Q2" />
+        <input
+          v-model="code"
+          type="text"
+          placeholder="例: X7K9Q2"
+          :class="{ 'input-error': error }"
+          @input="handleInput"
+        />
+        <p v-if="error" class="error-message">{{ error }}</p>
       </label>
-      <button class="primary" type="submit">参加する</button>
+      <button class="primary" type="submit" :disabled="!code.trim()">参加する</button>
       <p class="hint">
         教員が表示しているコードを入力してください。
       </p>
@@ -104,13 +120,37 @@ input {
   transition: transform 0.2s ease;
 }
 
-.primary:hover {
+.primary:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+.primary:disabled {
+  background: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .hint {
   margin-top: 4px;
   font-size: 12px;
   color: var(--ink-muted);
+}
+
+.input-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.error-message {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.error-message::before {
+  content: "⚠";
 }
 </style>

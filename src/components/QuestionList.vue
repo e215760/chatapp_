@@ -10,6 +10,10 @@ const props = defineProps<{
   userLevels?: Record<string, number>;
   currentUserLevel?: number;
   defaultAvatarUrl: string;
+  userReactions?: {
+    questions: Record<string, { like: boolean; thanks: boolean }>;
+    answers: Record<string, { like: boolean; thanks: boolean }>;
+  };
 }>();
 
 const emit = defineEmits<{
@@ -61,6 +65,12 @@ const frameClassForOwner = (ownerId?: string) => {
   if (level >= 1) return "frame-1";
   return "";
 };
+
+const isQuestionReacted = (questionId: string, type: "like" | "thanks") =>
+  props.userReactions?.questions[questionId]?.[type] ?? false;
+
+const isAnswerReacted = (answerId: string, type: "like" | "thanks") =>
+  props.userReactions?.answers[answerId]?.[type] ?? false;
 
 const submitReply = (questionId: string) => {
   const text = replyText.value[questionId]?.trim();
@@ -166,12 +176,14 @@ const saveEditAnswer = (answer: Question["answers"][number]) => {
       <div class="footer">
         <button
           class="reaction"
+          :class="{ active: isQuestionReacted(question.id, 'like') }"
           @click="emit('react', { questionId: question.id, type: 'like' })"
         >
           いいね {{ question.reactions.like }}
         </button>
         <button
           class="reaction"
+          :class="{ active: isQuestionReacted(question.id, 'thanks') }"
           @click="emit('react', { questionId: question.id, type: 'thanks' })"
         >
           参考になった {{ question.reactions.thanks }}
@@ -257,12 +269,14 @@ const saveEditAnswer = (answer: Question["answers"][number]) => {
             <div class="answer-actions">
               <button
                 class="reaction"
+                :class="{ active: isAnswerReacted(answer.id, 'like') }"
                 @click="emit('react-answer', { answerId: answer.id, type: 'like' })"
               >
                 いいね {{ answer.reactions.like }}
               </button>
               <button
                 class="reaction"
+                :class="{ active: isAnswerReacted(answer.id, 'thanks') }"
                 @click="emit('react-answer', { answerId: answer.id, type: 'thanks' })"
               >
                 参考になった {{ answer.reactions.thanks }}
@@ -291,7 +305,7 @@ const saveEditAnswer = (answer: Question["answers"][number]) => {
             type="text"
             placeholder="回答・返信を入力"
           />
-          <button class="reply-btn" type="button" @click="submitReply(question.id)">
+          <button class="reply-btn" type="button" :disabled="!replyText[question.id]?.trim()" @click="submitReply(question.id)">
             返信
           </button>
         </div>
@@ -536,6 +550,12 @@ const saveEditAnswer = (answer: Question["answers"][number]) => {
   cursor: pointer;
 }
 
+.reply-btn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 .footer {
   display: flex;
   align-items: center;
@@ -572,6 +592,23 @@ const saveEditAnswer = (answer: Question["answers"][number]) => {
   padding: 6px 10px;
   border-radius: 999px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reaction:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.reaction.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  animation: bounce 0.3s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }
 
 .action {

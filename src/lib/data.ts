@@ -782,4 +782,53 @@ export const dataApi = {
     }
     return result;
   },
+  async listUserReactions(
+    questionIds: string[],
+    answerIds: string[],
+    userId: string
+  ): Promise<{
+    questions: Record<string, { like: boolean; thanks: boolean }>;
+    answers: Record<string, { like: boolean; thanks: boolean }>;
+  }> {
+    if (useLocal) {
+      return localApi.listUserReactions(questionIds, answerIds, userId);
+    }
+    const supabase = getSupabase();
+    if (!supabase) {
+      return localApi.listUserReactions(questionIds, answerIds, userId);
+    }
+
+    const questions: Record<string, { like: boolean; thanks: boolean }> = {};
+    const answers: Record<string, { like: boolean; thanks: boolean }> = {};
+
+    if (questionIds.length) {
+      const { data } = await supabase
+        .from("question_reactions")
+        .select("question_id, type")
+        .eq("user_id", userId)
+        .in("question_id", questionIds);
+      for (const qId of questionIds) {
+        questions[qId] = { like: false, thanks: false };
+      }
+      for (const row of data ?? []) {
+        questions[row.question_id][row.type as "like" | "thanks"] = true;
+      }
+    }
+
+    if (answerIds.length) {
+      const { data } = await supabase
+        .from("answer_reactions")
+        .select("answer_id, type")
+        .eq("user_id", userId)
+        .in("answer_id", answerIds);
+      for (const aId of answerIds) {
+        answers[aId] = { like: false, thanks: false };
+      }
+      for (const row of data ?? []) {
+        answers[row.answer_id][row.type as "like" | "thanks"] = true;
+      }
+    }
+
+    return { questions, answers };
+  },
 };

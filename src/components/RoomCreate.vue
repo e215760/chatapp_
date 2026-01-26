@@ -34,7 +34,7 @@ const submit = () => {
         <span>メモ (任意)</span>
         <input v-model="channel" type="text" placeholder="例: 水2 / 大教室" />
       </label>
-      <button class="primary" type="submit">ルームを生成</button>
+      <button class="primary" type="submit" :disabled="!name.trim()">ルームを生成</button>
       <p class="hint"></p>
     </form>
   </section>
@@ -99,8 +99,14 @@ input {
   transition: transform 0.2s ease;
 }
 
-.primary:hover {
+.primary:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+.primary:disabled {
+  background: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .hint {

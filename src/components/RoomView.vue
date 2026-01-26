@@ -14,6 +14,10 @@ const props = defineProps<{
   userLevels: Record<string, number>;
   currentUserLevel: number;
   defaultAvatarUrl: string;
+  userReactions?: {
+    questions: Record<string, { like: boolean; thanks: boolean }>;
+    answers: Record<string, { like: boolean; thanks: boolean }>;
+  };
 }>();
 
 const emit = defineEmits<{
@@ -138,7 +142,7 @@ const applyTemplate = (value: string) => {
             <input v-model="anonymous" type="checkbox" />
             <span class="checkbox-text">匿名で投稿する (登録名は表示されません)</span>
           </label>
-          <button class="primary" type="submit" :disabled="loading">
+          <button class="primary" type="submit" :disabled="!text.trim() || loading">
             投稿する
           </button>
         </form>
@@ -157,6 +161,7 @@ const applyTemplate = (value: string) => {
         :user-levels="userLevels"
         :default-avatar-url="defaultAvatarUrl"
         :current-user-level="currentUserLevel"
+        :user-reactions="userReactions"
         @resolve="emit('resolve', $event)"
         @reopen="emit('reopen', $event)"
         @react="emit('react', $event)"
@@ -278,7 +283,8 @@ input {
 }
 
 .primary:disabled {
-  opacity: 0.6;
+  background: #9ca3af;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
