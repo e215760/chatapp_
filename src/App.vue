@@ -17,6 +17,9 @@ const room = ref<Room | null>(null);
 const questions = ref<Question[]>([]);
 const joinedRooms = ref<Room[]>([]);
 const profile = ref<Profile>({ xp: 0, level: 0, avatarStage: 0 });
+const xpDelta = ref<number | null>(null);
+const showLevelUp = ref(false);
+const previousLevel = ref(0);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const pendingJoinCode = ref<string | null>(null);
@@ -63,6 +66,23 @@ const setError = (message: string | null) => {
         error.value = null;
       }
     }, 4000);
+  }
+};
+
+const handleXpChange = (newProfile: Profile, oldXp: number, oldLevel: number) => {
+  const delta = newProfile.xp - oldXp;
+  if (delta !== 0) {
+    xpDelta.value = delta;
+    setTimeout(() => {
+      xpDelta.value = null;
+    }, 1500);
+  }
+
+  if (newProfile.level > oldLevel) {
+    showLevelUp.value = true;
+    setTimeout(() => {
+      showLevelUp.value = false;
+    }, 2500);
   }
 };
 
@@ -282,7 +302,10 @@ const handleSubmitQuestion = async (payload: { text: string; anonymous?: boolean
       currentUser.value?.id
     );
     if (role.value !== "teacher") {
+      const oldXp = profile.value.xp;
+      const oldLevel = profile.value.level;
       profile.value = await dataApi.addXp(1);
+      handleXpChange(profile.value, oldXp, oldLevel);
     }
     await refreshQuestions();
   } catch (err) {
@@ -385,7 +408,10 @@ const handleReply = async (payload: {
       ownerId
     );
     if (currentUser.value) {
+      const oldXp = profile.value.xp;
+      const oldLevel = profile.value.level;
       profile.value = await dataApi.addXp(1);
+      handleXpChange(profile.value, oldXp, oldLevel);
     }
     if (currentUser.value?.avatarUrl && currentUser.value.id) {
       userAvatars.value = {
@@ -417,7 +443,10 @@ const handleDeleteQuestion = (payload: { questionId: string }) => {
       try {
         await dataApi.deleteQuestion(payload.questionId);
         if (target && currentUser.value && target.ownerId === currentUser.value.id) {
+          const oldXp = profile.value.xp;
+          const oldLevel = profile.value.level;
           profile.value = await dataApi.addXp(-1);
+          handleXpChange(profile.value, oldXp, oldLevel);
         }
         await refreshQuestions();
       } catch (err) {
@@ -443,7 +472,10 @@ const handleDeleteAnswer = (payload: { answerId: string }) => {
       try {
         await dataApi.deleteAnswer(payload.answerId);
         if (target && currentUser.value && target.ownerId === currentUser.value.id) {
+          const oldXp = profile.value.xp;
+          const oldLevel = profile.value.level;
           profile.value = await dataApi.addXp(-1);
+          handleXpChange(profile.value, oldXp, oldLevel);
         }
         await refreshQuestions();
       } catch (err) {
@@ -605,7 +637,7 @@ onUnmounted(() => {
           <div class="profile-actions">
             <button class="ghost" @click="handleAvatarPick">アイコンを設定</button>
             <button class="primary" @click="handleProfileSave">保存</button>
-            <button class="ghost" @click="handleLogout">ログアウト</button>
+            <button class="ghost-danger" @click="handleLogout">ログアウト</button>
           </div>
         </div>
         <RoomHistory
@@ -649,7 +681,15 @@ onUnmounted(() => {
       </section>
     </main>
 
-    <div v-if="error" class="toast">{{ error }}</div>
+    <div v-if="error" class="toast error-toast">{{ error }}</div>
+
+    <div v-if="xpDelta" class="xp-toast" :class="{ negative: xpDelta < 0 }">
+      {{ xpDelta > 0 ? '+' : '' }}{{ xpDelta }} XP
+    </div>
+
+    <div v-if="showLevelUp" class="level-up-toast">
+      Level {{ profile.level }}!
+    </div>
 
     <ConfirmModal
       :open="confirmModal.open"
@@ -942,6 +982,55 @@ a {
   border: 0;
 }
 
+/* Global button styles */
+.primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+.ghost {
+  background: white;
+  border: 1px solid rgba(31, 41, 55, 0.15);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ghost:hover {
+  background: rgba(37, 99, 235, 0.04);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.ghost-danger {
+  background: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #dc2626;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ghost-danger:hover {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
 .toast {
   position: fixed;
   right: 24px;
@@ -952,6 +1041,60 @@ a {
   border-radius: 999px;
   font-size: 13px;
   box-shadow: var(--shadow);
+}
+
+.error-toast {
+  z-index: 999;
+}
+
+.xp-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 1.2s forwards;
+  z-index: 1000;
+}
+
+.xp-toast.negative {
+  background: #dc2626;
+}
+
+.level-up-toast {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.2s forwards;
+  z-index: 1001;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes fadeIn {

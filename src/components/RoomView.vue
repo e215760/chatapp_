@@ -90,7 +90,7 @@ const applyTemplate = (value: string) => {
         <p class="sub"></p>
         <p v-if="room.channel" class="sub">メモ: {{ room.channel }}</p>
       </div>
-      <button class="ghost" @click="emit('exit')">退出</button>
+      <button class="ghost-danger" @click="emit('exit')">退出</button>
     </div>
     <div class="stats">
       <div class="stat">
