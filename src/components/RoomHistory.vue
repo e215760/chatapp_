@@ -32,7 +32,10 @@ const emit = defineEmits<{
             <span v-if="item.channel">/ {{ item.channel }}</span>
           </p>
         </div>
-        <span class="enter">開く</span>
+        <span class="enter">
+          <span class="enter-icon">▶</span>
+          開く
+        </span>
       </button>
     </div>
     <div v-else class="empty">
@@ -90,6 +93,7 @@ const emit = defineEmits<{
 .room-item:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-soft);
+  background: rgba(37, 99, 235, 0.04);
 }
 
 .room-name {
@@ -104,11 +108,23 @@ const emit = defineEmits<{
 }
 
 .enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent);
   font-weight: 600;
+}
+
+.enter-icon {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.room-item:hover .enter-icon {
+  transform: translateX(3px);
 }
 
 .empty {
