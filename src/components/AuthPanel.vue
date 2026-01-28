@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import type { Role } from "../types";
+
+const ALLOWED_DOMAIN = "@ie.u-ryukyu.ac.jp";
 
 const props = defineProps<{
   defaultAvatarUrl: string;
@@ -21,9 +23,61 @@ const mode = ref<"login" | "register">("login");
 const name = ref("");
 const email = ref("");
 const password = ref("");
+const passwordConfirm = ref("");
 const role = ref<Role>("student");
 const avatarInput = ref<HTMLInputElement | null>(null);
 const avatarUrl = ref<string | undefined>(undefined);
+const touched = ref<Record<string, boolean>>({});
+
+const markTouched = (field: string) => {
+  touched.value[field] = true;
+};
+
+const emailError = computed(() => {
+  if (!touched.value.email) return "";
+  const trimmed = email.value.trim();
+  if (!trimmed) return "メールアドレスを入力してください。";
+  if (!trimmed.toLowerCase().endsWith(ALLOWED_DOMAIN)) {
+    return `${ALLOWED_DOMAIN} のメールアドレスのみ登録できます。`;
+  }
+  return "";
+});
+
+const passwordError = computed(() => {
+  if (!touched.value.password) return "";
+  if (!password.value) return "パスワードを入力してください。";
+  if (password.value.length < 8) return "パスワードは8文字以上で入力してください。";
+  return "";
+});
+
+const passwordConfirmError = computed(() => {
+  if (mode.value !== "register") return "";
+  if (!touched.value.passwordConfirm) return "";
+  if (!passwordConfirm.value) return "パスワード確認を入力してください。";
+  if (password.value !== passwordConfirm.value) return "パスワードが一致しません。";
+  return "";
+});
+
+const nameError = computed(() => {
+  if (mode.value !== "register") return "";
+  if (!touched.value.name) return "";
+  if (!name.value.trim()) return "表示名を入力してください。";
+  return "";
+});
+
+const isFormValid = computed(() => {
+  const trimmedEmail = email.value.trim();
+  const hasEmail = !!trimmedEmail;
+  const hasValidDomain = trimmedEmail.toLowerCase().endsWith(ALLOWED_DOMAIN);
+  const hasPassword = password.value.length >= 8;
+
+  if (mode.value === "login") {
+    return hasEmail && hasValidDomain && hasPassword;
+  }
+  const hasName = !!name.value.trim();
+  const passwordsMatch = password.value === passwordConfirm.value && !!passwordConfirm.value;
+  return hasName && hasEmail && hasValidDomain && hasPassword && passwordsMatch;
+});
 
 const pickAvatar = () => {
   avatarInput.value?.click();
@@ -52,18 +106,14 @@ const handleAvatarChange = (event: Event) => {
 };
 
 const submit = () => {
+  if (!isFormValid.value) return;
+
   const trimmedEmail = email.value.trim();
   const trimmedPassword = password.value.trim();
-  if (!trimmedEmail || !trimmedPassword) {
-    return;
-  }
   if (mode.value === "login") {
     emit("login", { email: trimmedEmail, password: trimmedPassword });
   } else {
     const trimmedName = name.value.trim();
-    if (!trimmedName) {
-      return;
-    }
     emit("register", {
       name: trimmedName,
       role: role.value,
@@ -89,10 +139,13 @@ const submit = () => {
       </button>
     </div>
     <form class="form" @submit.prevent="submit">
-      <label v-if="mode === 'register'">
-        <span>表示名</span>
-        <input v-model="name" type="text" placeholder="例: Yuki" />
-      </label>
+      <div v-if="mode === 'register'" class="field">
+        <label>
+          <span>表示名</span>
+          <input v-model="name" type="text" placeholder="例: Yuki" :class="{ 'input-error': nameError }" @blur="markTouched('name')" />
+        </label>
+        <p v-if="nameError" class="field-error">{{ nameError }}</p>
+      </div>
       <div v-if="mode === 'register'" class="avatar-picker">
         <span class="label">アイコン設定</span>
         <div class="avatar-row">
@@ -114,10 +167,13 @@ const submit = () => {
           </div>
         </div>
       </div>
-      <label>
-        <span>メールアドレス</span>
-        <input v-model="email" type="email" placeholder="you@example.com" />
-      </label>
+      <div class="field">
+        <label>
+          <span>メールアドレス</span>
+          <input v-model="email" type="email" placeholder="example@ie.u-ryukyu.ac.jp" :class="{ 'input-error': emailError }" @blur="markTouched('email')" />
+        </label>
+        <p v-if="emailError" class="field-error">{{ emailError }}</p>
+      </div>
       <label v-if="mode === 'register'">
         <span>役割</span>
         <select v-model="role">
@@ -125,11 +181,21 @@ const submit = () => {
           <option value="teacher">教員</option>
         </select>
       </label>
-      <label>
-        <span>パスワード</span>
-        <input v-model="password" type="password" placeholder="8文字以上推奨" />
-      </label>
-      <button class="primary" type="submit">
+      <div class="field">
+        <label>
+          <span>パスワード</span>
+          <input v-model="password" type="password" placeholder="8文字以上" :class="{ 'input-error': passwordError }" @blur="markTouched('password')" />
+        </label>
+        <p v-if="passwordError" class="field-error">{{ passwordError }}</p>
+      </div>
+      <div v-if="mode === 'register'" class="field">
+        <label>
+          <span>パスワード確認</span>
+          <input v-model="passwordConfirm" type="password" placeholder="もう一度入力" :class="{ 'input-error': passwordConfirmError }" @blur="markTouched('passwordConfirm')" />
+        </label>
+        <p v-if="passwordConfirmError" class="field-error">{{ passwordConfirmError }}</p>
+      </div>
+      <button class="primary" type="submit" :disabled="!isFormValid">
         {{ mode === "login" ? "ログイン" : "登録して続ける" }}
       </button>
     </form>
@@ -246,10 +312,6 @@ select {
   transition: transform 0.2s ease;
 }
 
-.primary:hover {
-  transform: translateY(-2px);
-}
-
 .ghost {
   border: 1px solid rgba(31, 41, 55, 0.2);
   background: transparent;
@@ -263,5 +325,30 @@ select {
   font-size: 12px;
   color: var(--ink-muted);
   margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: 0;
+}
+
+.field-error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.input-error {
+  border-color: #dc2626 !important;
+}
+
+.primary:disabled {
+  background: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 </style>
